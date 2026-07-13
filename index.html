@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus Cloud Console</title>
+    
+    <!-- Link to your manifest file so phones know it's a PWA -->
+    <link rel="manifest" href="/manifest.json">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none; /* Prevents text highlighting like a real console */
+        }
+
+        body {
+            background: #0d0e12;
+            color: #f0f1f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px 60px;
+            transition: background-image 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            background-size: cover;
+            background-position: center;
+            /* Default background before JS loads */
+            background-image: linear-gradient(rgba(13, 14, 18, 0.85), rgba(13, 14, 18, 0.95)), url('https://images.unsplash.com/photo-1612287230202-1bf1d85d1bdf?q=80&w=1200');
+        }
+
+        /* -------------------------
+           TOP SYSTEM BAR
+        ------------------------- */
+        .system-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 50px;
+            z-index: 10;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            font-size: 18px;
+            background: rgba(255, 255, 255, 0.07);
+            padding: 8px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* -------------------------
+           GAME DETAILS (MIDDLE)
+        ------------------------- */
+        .game-details {
+            margin-top: auto;
+            margin-bottom: 30px;
+            z-index: 10;
+        }
+
+        .game-title-display {
+            font-size: 38px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            text-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            transition: opacity 0.3s ease;
+        }
+
+        /* -------------------------
+           HORIZONTAL CAROUSEL
+        ------------------------- */
+        .carousel-container {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            overflow: visible;
+            padding: 20px 0 40px 0;
+            z-index: 10;
+        }
+
+        .game-shelf {
+            display: flex;
+            gap: 35px;
+            transition: transform 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            padding-left: 10vw; /* Keeps the active card slightly offset from the left edge */
+        }
+
+        .game-card {
+            min-width: 240px;
+            max-width: 240px;
+            height: 340px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 18px;
+            border: 3px solid transparent;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .game-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        /* The Magic Selection Highlight */
+        .game-card.focused {
+            transform: scale(1.15) translateY(-15px);
+            border-color: #f0f1f5;
+            box-shadow: 0 20px 40px rgba(255, 255, 255, 0.15);
+        }
+
+        .game-card.focused img {
+            transform: scale(1.05);
+        }
+
+        /* Dim the unselected cards slightly */
+        .game-card:not(.focused) {
+            opacity: 0.6;
+            transform: scale(0.95);
+        }
+
+        /* -------------------------
+           FOOTER ACTION BAR
+        ------------------------- */
+        .action-bar {
+            display: flex;
+            gap: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 20px;
+            font-size: 15px;
+            font-weight: 600;
+            z-index: 10;
+        }
+
+        .btn-prompt {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0.9;
+        }
+
+        .icon-btn {
+            background: #f0f1f5;
+            color: #0d0e12;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 900;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+        }
+
+        /* -------------------------
+           PWA BLOCKER SCREEN
+        ------------------------- */
+        #pwa-blocker {
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #0d0e12;
+            color: #fff;
+            text-align: center;
+            z-index: 9999;
+            padding: 30px;
+        }
+
+        .instruction-box {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 16px;
+            font-size: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: left;
+            line-height: 1.8;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PWA Installation Blocker -->
+    <div id="pwa-blocker">
+        <span style="font-size: 60px; margin-bottom: 20px;">🕹️</span>
+        <h1 style="margin-bottom: 15px; font-size: 28px;">Console Activation Required</h1>
+        <p style="color: #a0a5b5; max-width: 450px; line-height: 1.6; font-size: 16px; margin-bottom: 30px;">
+            To enable full-screen console mode, controller access, and low-latency streaming, this app must be installed to your device.
+        </p>
+        <div class="instruction-box">
+            <strong>💡 How to Install:</strong><br>
+            • <strong>iOS / iPhone:</strong> Tap the <span style="color:#3a86ff">Share button</span> at the bottom, scroll down, and select <strong>"Add to Home Screen"</strong>.<br>
+            • <strong>Android / Chrome:</strong> Tap the <span style="color:#3a86ff">three dots menu</span> at the top right, and select <strong>"Install App"</strong> or <strong>"Add to Home Screen"</strong>.
+        </div>
+    </div>
+
+    <!-- Main Dashboard UI -->
+    <div id="dashboard-ui" style="display: none; height: 100%; width: 100%; flex-direction: column; justify-content: space-between;">
+        
+        <header class="system-bar">
+            <div class="user-badge">
+                <span>🎮</span> DuhokGamer99
+            </div>
+            <div class="status-indicators">
+                <span id="ping-label">⚡ Local Node: 14ms</span>
+                <span id="clock-label">12:00 PM</span>
+            </div>
+        </header>
+
+        <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-end;">
+            <div class="game-details">
+                <div class="game-title-display" id="active-title">Loading Hub...</div>
+            </div>
+
+            <div class="carousel-container">
+                <div class="game-shelf" id="shelf">
+                    <!-- Cards injected here via JS -->
+                </div>
+            </div>
+        </div>
+
+        <footer class="action-bar">
+            <div class="btn-prompt"><span class="icon-btn">A</span> Launch Game</div>
+            <div class="btn-prompt"><span class="icon-btn">◀</span> Move Selection</div>
+            <div class="btn-prompt">🌐 cloud.nexus.xyz</div>
+        </footer>
+    </div>
+
+    <script>
+        // 1. Strict PWA Check
+        // (To test this on your computer browser during development, change `const isStandalone = false;` to `true`)
+        function enforcePWA() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
+                                 || window.navigator.standalone 
+                                 || document.referrer.includes('android-app://');
+
+            if (!isStandalone) {
+                document.getElementById('pwa-blocker').style.display = 'flex';
+                document.getElementById('dashboard-ui').style.display = 'none';
+            } else {
+                document.getElementById('pwa-blocker').style.display = 'none';
+                document.getElementById('dashboard-ui').style.display = 'flex';
+                initDashboard();
+            }
+        }
+
+        // 2. Game Library Data
+        const gamesCatalog = [
+            {
+                title: "Super Smash Bros. Ultimate",
+                cover: "https://images.unsplash.com/photo-1551103782-8ab07afd45c1?q=80&w=400",
+                bg: "https://images.unsplash.com/photo-1551103782-8ab07afd45c1?q=80&w=1200"
+            },
+            {
+                title: "Zelda: Tears of the Kingdom",
+                cover: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=400",
+                bg: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=1200"
+            },
+            {
+                title: "Mario Kart 8 Deluxe",
+                cover: "https://images.unsplash.com/photo-1534423861386-85a16f5d13fd?q=80&w=400",
+                bg: "https://images.unsplash.com/photo-1534423861386-85a16f5d13fd?q=80&w=1200"
+            },
+            {
+                title: "Hollow Knight",
+                cover: "https://images.unsplash.com/photo-1560253023-3ec5d502959f?q=80&w=400",
+                bg: "https://images.unsplash.com/photo-1560253023-3ec5d502959f?q=80&w=1200"
+            }
+        ];
+
+        let currentIndex = 0;
+        const shelf = document.getElementById('shelf');
+        const activeTitle = document.getElementById('active-title');
+
+        // 3. Build the Carousel
+        function initDashboard() {
+            gamesCatalog.forEach((game, index) => {
+                const card = document.createElement('div');
+                card.className = `game-card ${index === 0 ? 'focused' : ''}`;
+                card.innerHTML = `<img src="${game.cover}" alt="${game.title}">`;
+                shelf.appendChild(card);
+            });
+            updateFocus();
+        }
+
+        // 4. Handle Visual Transitions
+        function updateFocus() {
+            const cards = document.querySelectorAll('.game-card');
+            cards.forEach((card, idx) => {
+                if(idx === currentIndex) {
+                    card.classList.add('focused');
+                } else {
+                    card.classList.remove('focused');
+                }
+            });
+
+            const activeGame = gamesCatalog[currentIndex];
+            
+            // Fade text out slightly before changing for a smooth feel
+            activeTitle.style.opacity = '0';
+            setTimeout(() => {
+                activeTitle.textContent = activeGame.title;
+                activeTitle.style.opacity = '1';
+            }, 150);
+            
+            // Smoothly crossfade background image
+            document.body.style.backgroundImage = `linear-gradient(rgba(13, 14, 18, 0.75), rgba(13, 14, 18, 0.95)), url('${activeGame.bg}')`;
+
+            // Calculate exact pixels to shift the shelf left/right
+            const cardWidth = 240;
+            const gap = 35;
+            const offset = currentIndex * -(cardWidth + gap); 
+            shelf.style.transform = `translateX(${offset}px)`;
+        }
+
+        // 5. Keyboard / Controller Input
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') {
+                if (currentIndex < gamesCatalog.length - 1) {
+                    currentIndex++;
+                    updateFocus();
+                }
+            } else if (e.key === 'ArrowLeft') {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateFocus();
+                }
+            } else if (e.key === 'Enter') {
+                alert(`Starting stream session for: ${gamesCatalog[currentIndex].title}`);
+            }
+        });
+
+        // 6. System Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock-label').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Boot the system
+        enforcePWA();
+
+    </script>
+</body>
+</html>
