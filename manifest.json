@@ -1,0 +1,31 @@
+{
+  "name": "Nexus Cloud Console",
+  "short_name": "Nexus",
+  "description": "Stream ultra-low latency games directly from local cloud nodes.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0d0e12",
+  "theme_color": "#0d0e12",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1612287230202-1bf1d85d1bdf?q=80&w=192&h=192&fit=crop",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1612287230202-1bf1d85d1bdf?q=80&w=512&h=512&fit=crop",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1612287230202-1bf1d85d1bdf?q=80&w=192&h=192&fit=crop",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
